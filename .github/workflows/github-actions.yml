@@ -78,3 +78,30 @@ jobs:
 
       - name: unit-test pitie
         run: npm test
+
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci --cache .npm --prefer-offline
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+
+      - name: release-it
+        run: npx --yes release-it --ci
