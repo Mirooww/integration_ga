@@ -100,8 +100,5 @@ jobs:
       - name: Install dependencies
         run: npm ci --cache .npm --prefer-offline
 
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-
-      - name: release-it
-        run: npx --yes release-it --ci
+      - name: Determine tag
+        run: 'echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV'
