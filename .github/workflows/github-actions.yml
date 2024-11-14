@@ -2,7 +2,7 @@ name: GitHub Actions Demo
 on: [push]
 
 jobs:
-   build:
+   install:
       runs-on: ubuntu-latest
       steps:
          - uses: actions/checkout@v4
@@ -28,69 +28,8 @@ jobs:
          - name: Install dependencies
            run: npm install
 
+         - name: Build
+           run: npm run build
+
          - name: Test
            run: npm test
-
-   lint:
-      runs-on: ubuntu-latest
-      needs: build
-      steps:
-         - name: Checkout repository
-           uses: actions/checkout@v4
-
-         - name: Set up Node.js
-           uses: actions/setup-node@v3
-           with:
-              node-version: "latest"
-
-         - name: Cache node modules
-           id: cache-npm
-           uses: actions/cache@v3
-           env:
-              cache-name: cache-node-modules
-           with:
-              path: ~/.npm
-              key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-              restore-keys: |
-                 ${{ runner.os }}-build-${{ env.cache-name }}-
-                 ${{ runner.os }}-build-
-                 ${{ runner.os }}-
-
-         - name: Install dependencies
-           run: npm ci --cache .npm --prefer-offline
-
-         - name: Run lint
-           run: npm run lint
-
-   unit-test:
-      runs-on: ubuntu-latest
-      needs: build
-      steps:
-         - name: Checkout repository
-           uses: actions/checkout@v4
-
-         - name: Set up Node.js
-           uses: actions/setup-node@v3
-           with:
-              node-version: "latest"
-
-         - name: Cache Node.js modules
-           uses: actions/cache@v3
-           with:
-              path: |
-                 node_modules
-                 .npm
-              key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-              restore-keys: |
-                 ${{ runner.os }}-node-
-
-         - name: Install dependencies
-           run: npm ci --cache .npm --prefer-offline
-
-         - name: Run unit tests
-           run: npm test
-
-   release:
-      runs-on: ubuntu-latest
-      steps:
-         - uses: trstringer/manual-approval@v1
