@@ -49,5 +49,8 @@ jobs:
                  ${{ runner.os }}-build-
                  ${{ runner.os }}-
 
+         - name: Install dependencies
+           run: npm ci --cache .npm --prefer-offline
+
          - name: eslint setup
            run: npm run lint
