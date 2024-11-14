@@ -2,55 +2,80 @@ name: GitHub Actions Demo
 on: [push]
 
 jobs:
-   install:
-      runs-on: ubuntu-latest
-      steps:
-         - uses: actions/checkout@v4
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-         - name: Cache node modules
-           id: cache-npm
-           uses: actions/cache@v3
-           env:
-              cache-name: cache-node-modules
-           with:
-              path: ~/.npm
-              key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-              restore-keys: |
-                 ${{ runner.os }}-build-${{ env.cache-name }}-
-                 ${{ runner.os }}-build-
-                 ${{ runner.os }}-
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
 
-         - if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
-           name: List the state of node modules
-           continue-on-error: true
-           run: npm list
+      - name: List the state of node modules
+        if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        run: npm list
 
-         - name: Install dependencies
-           run: npm install
+      - name: Install dependencies
+        run: npm install
 
-         - name: Test
-           run: npm test
+      - name: Test
+        run: npm test
 
-   validate:
-      runs-on: ubuntu-latest
-      steps:
-         - uses: actions/checkout@v4
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-         - name: Cache node modules
-           id: cache-npm
-           uses: actions/cache@v3
-           env:
-              cache-name: cache-node-modules
-           with:
-              path: ~/.npm
-              key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-              restore-keys: |
-                 ${{ runner.os }}-build-${{ env.cache-name }}-
-                 ${{ runner.os }}-build-
-                 ${{ runner.os }}-
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
 
-         - name: Install dependencies
-           run: npm ci --cache .npm --prefer-offline
+      - name: Install dependencies
+        run: npm ci --cache .npm --prefer-offline
 
-         - name: eslint setup
-           run: npm run lint
+      - name: eslint setup
+        run: npm run lint
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci --cache .npm --prefer-offline
+
+      - name: unit-test pitie
+        if: ${{ github.event.head_commit.message != 'chore: release' && github.ref != 'refs/tags/*' }}
+        run: npm test
