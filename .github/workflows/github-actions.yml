@@ -5,100 +5,106 @@ jobs:
     install:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-            - name: Cache node modules
-              id: cache-npm
-              uses: actions/cache@v3
-              env:
-                  cache-name: cache-node-modules
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
               with:
-                  path: ~/.npm
-                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-                  restore-keys: |
-                      ${{ runner.os }}-build-${{ env.cache-name }}-
-                      ${{ runner.os }}-build-
-                      ${{ runner.os }}-
+                  node-version: "latest"
 
-            - name: List the state of node modules
-              if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
-              continue-on-error: true
-              run: npm list
+            - name: Cache Node modules
+              uses: actions/cache@v4
+              id: cache-node-modules
+              with:
+                  path: node_modules
+                  key: ${{ runner.os }}-node_modules-${{ hashFiles('package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-node_modules-
 
             - name: Install dependencies
-              run: npm install
-
-            - name: Test
-              run: npm test
+              run: npm ci --prefer-offline
 
     validate:
+        needs: install
         runs-on: ubuntu-latest
+        if: "!startsWith(github.event.head_commit.message, 'chore: release')"
+
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "latest"
 
             - name: Cache node modules
-              id: cache-npm
-              uses: actions/cache@v3
-              env:
-                  cache-name: cache-node-modules
-              with:
-                  path: ~/.npm
-                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-                  restore-keys: |
-                      ${{ runner.os }}-build-${{ env.cache-name }}-
-                      ${{ runner.os }}-build-
-                      ${{ runner.os }}-
+              uses: actions/cache@v4
 
-            - name: Install dependencies
-              run: npm ci --cache .npm --prefer-offline
+              with:
+                  path: node_modules
+                  key: ${{ runner.os }}-node_modules-${{ hashFiles('package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-node_modules-
+
+            - name: unit-test
+              run: npm test
 
             - name: eslint setup
               run: npm run lint
 
-    unit-test:
+    e2e-test:
+        needs: validate
         runs-on: ubuntu-latest
+        if: github.event_name == 'pull_request'
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "latest"
 
             - name: Cache node modules
-              id: cache-npm
-              uses: actions/cache@v3
-              env:
-                  cache-name: cache-node-modules
+              uses: actions/cache@v4
               with:
-                  path: ~/.npm
-                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+                  path: node_modules
+                  key: ${{ runner.os }}-node_modules-${{ hashFiles('package-lock.json') }}
                   restore-keys: |
-                      ${{ runner.os }}-build-${{ env.cache-name }}-
-                      ${{ runner.os }}-build-
-                      ${{ runner.os }}-
+                      ${{ runner.os }}-node_modules-
 
-            - name: Install dependencies
-              run: npm ci --cache .npm --prefer-offline
-
-            - name: unit-test pitie
-              run: npm test
+            - name: Run E2D tests
+              run: echo "Hello E2E!"
 
     release:
+        needs: validate
         runs-on: ubuntu-latest
+
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "latest"
 
             - name: Cache node modules
-              id: cache-npm
-              uses: actions/cache@v3
-              env:
-                  cache-name: cache-node-modules
+              uses: actions/cache@v4
               with:
-                  path: ~/.npm
-                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+                  path: node_modules
+                  key: ${{ runner.os }}-node_modules-${{ hashFiles('package-lock.json') }}
                   restore-keys: |
-                      ${{ runner.os }}-build-${{ env.cache-name }}-
-                      ${{ runner.os }}-build-
-                      ${{ runner.os }}-
+                      ${{ runner.os }}-node_modules-
 
-            - name: Install dependencies
-              run: npm ci --cache .npm --prefer-offline
+            - name: Configure Git
+              run: |
+                  git config user.name "${GITHUB_ACTOR}"
+                  git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
-            - name: Determine tag
-              run: 'echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV'
+            - name: Release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: npx --yes release-it --ci
