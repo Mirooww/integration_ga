@@ -1,5 +1,10 @@
-name: GitHub Actions Demo
-on: [push]
+name: CI Pipeline
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 env:
     ENV_TARGET: ${{ github.ref == 'refs/heads/canary' && 'canary' || '' }}
@@ -52,13 +57,13 @@ jobs:
               run: npm test
 
             - name: Canary validation
-              if: env.ENV_TARGET == 'canary'
+              if: ${{ env.ENV_TARGET == 'canary' }}
               run: echo "Hello Only Canary!"
 
     integration-test:
         needs: validate
         runs-on: ubuntu-latest
-        if: "env.ENV_TARGET == 'canary' && !contains(github.event.head_commit.message, 'chore: release') && !startsWith(github.ref, 'refs/tags/')"
+        if: "${{ env.ENV_TARGET == 'canary' }} && !contains(github.event.head_commit.message, 'chore: release') && !startsWith(github.ref, 'refs/tags/')"
         steps:
             - uses: actions/checkout@v4
             - uses: actions/download-artifact@v4
