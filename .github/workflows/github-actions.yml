@@ -106,5 +106,5 @@ jobs:
 
             - name: Release
               env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: npx --yes release-it --ci
+                  GITHUB_TOKEN: ${{ secrets.ENV_TOKEN }}
+              run: npx --yes release-it --ci --github.token=$GITHUB_TOKEN
