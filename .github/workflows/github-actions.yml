@@ -6,9 +6,6 @@ on:
     pull_request:
         branches: [main]
 
-env:
-    ENV_TARGET: ${{ github.ref == 'refs/heads/canary' && 'canary' || '' }}
-
 jobs:
     install:
         runs-on: ubuntu-latest
@@ -56,14 +53,10 @@ jobs:
             - name: Run unit tests
               run: npm test
 
-            - name: Canary validation
-              if: ${{ env.ENV_TARGET == 'canary' }}
-              run: echo "Hello Only Canary!"
-
     integration-test:
         needs: validate
         runs-on: ubuntu-latest
-        if: "${{ env.ENV_TARGET == 'canary' }} && !contains(github.event.head_commit.message, 'chore: release') && !startsWith(github.ref, 'refs/tags/')"
+        if: "!contains(github.event.head_commit.message, 'chore: release') && !startsWith(github.ref, 'refs/tags/')"
         steps:
             - uses: actions/checkout@v4
             - uses: actions/download-artifact@v4
