@@ -1,107 +1,104 @@
-name: CI Pipeline
-
-on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
+name: GitHub Actions Demo
+on: [push]
 
 jobs:
     install:
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+            - uses: actions/checkout@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
+            - name: Cache node modules
+              id: cache-npm
+              uses: actions/cache@v3
+              env:
+                  cache-name: cache-node-modules
               with:
-                  node-version: "latest"
-
-            - name: Cache Node modules
-              uses: actions/cache@v4
-              id: cache-node-modules
-              with:
-                  path: node_modules
-                  key: ${{ runner.os }}-node_modules-${{ hashFiles('package-lock.json') }}
+                  path: ~/.npm
+                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
                   restore-keys: |
-                      ${{ runner.os }}-node_modules-
+                      ${{ runner.os }}-build-${{ env.cache-name }}-
+                      ${{ runner.os }}-build-
+                      ${{ runner.os }}-
+
+            - name: List the state of node modules
+              if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
+              continue-on-error: true
+              run: npm list
 
             - name: Install dependencies
-              if: steps.cache-node-modules.outputs.cache-hit != 'true'
-              run: npm ci
+              run: npm install
 
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: node_modules
-                  path: node_modules/
-
-    validate:
-        needs: install
-        runs-on: ubuntu-latest
-        if: "!contains(github.event.head_commit.message, 'chore: release') && !startsWith(github.ref, 'refs/tags/')"
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/download-artifact@v4
-              with:
-                  name: node_modules
-                  path: node_modules/
-
-            - name: Run linting
-              run: npm run lint
-
-            - name: Run unit tests
+            - name: Test
               run: npm test
 
-    integration-test:
-        needs: validate
+    validate:
         runs-on: ubuntu-latest
-        if: "!contains(github.event.head_commit.message, 'chore: release') && !startsWith(github.ref, 'refs/tags/')"
         steps:
             - uses: actions/checkout@v4
-            - uses: actions/download-artifact@v4
+
+            - name: Cache node modules
+              id: cache-npm
+              uses: actions/cache@v3
+              env:
+                  cache-name: cache-node-modules
               with:
-                  name: node_modules
-                  path: node_modules/
+                  path: ~/.npm
+                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-build-${{ env.cache-name }}-
+                      ${{ runner.os }}-build-
+                      ${{ runner.os }}-
 
-            - name: Run integration tests
-              run: echo "Hello Integration!"
+            - name: Install dependencies
+              run: npm ci --cache .npm --prefer-offline
 
-    e2e-test:
-        needs: integration-test
+            - name: eslint setup
+              run: npm run lint
+
+    unit-test:
         runs-on: ubuntu-latest
-        if: github.event_name == 'pull_request'
         steps:
             - uses: actions/checkout@v4
-            - uses: actions/download-artifact@v4
-              with:
-                  name: node_modules
-                  path: node_modules/
 
-            - name: Run E2E tests
-              run: echo "Hello E2E!"
+            - name: Cache node modules
+              id: cache-npm
+              uses: actions/cache@v3
+              env:
+                  cache-name: cache-node-modules
+              with:
+                  path: ~/.npm
+                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-build-${{ env.cache-name }}-
+                      ${{ runner.os }}-build-
+                      ${{ runner.os }}-
+
+            - name: Install dependencies
+              run: npm ci --cache .npm --prefer-offline
+
+            - name: unit-test pitie
+              run: npm test
 
     release:
-        needs: [validate, integration-test]
         runs-on: ubuntu-latest
-        if: "github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore: release') && !startsWith(github.ref, 'refs/tags/')"
-        environment: production
         steps:
             - uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
 
-            - uses: actions/download-artifact@v4
-              with:
-                  name: node_modules
-                  path: node_modules/
-
-            - name: Configure Git
-              run: |
-                  git config user.name "${GITHUB_ACTOR}"
-                  git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-
-            - name: Release
+            - name: Cache node modules
+              id: cache-npm
+              uses: actions/cache@v3
               env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: npx --yes release-it --ci
+                  cache-name: cache-node-modules
+              with:
+                  path: ~/.npm
+                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-build-${{ env.cache-name }}-
+                      ${{ runner.os }}-build-
+                      ${{ runner.os }}-
+
+            - name: Install dependencies
+              run: npm ci --cache .npm --prefer-offline
+
+            - name: Determine tag
+              run: 'echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV'
